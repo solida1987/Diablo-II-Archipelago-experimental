@@ -3978,6 +3978,83 @@ static void ScanMonsters(void) {
     /* the old "drop the oldest half on overflow" compaction lived here. */
 }
 
+
+/* CLIENT QUEST-RECORD SYNC - the vanishing waypoint act tabs
+ *
+ * Repeated reports: every act tab except Act 1 disappears from the waypoint
+ * menu, and talking to one or two town NPCs - ANY of them - brings them all
+ * back at once. The waypoint BITS are never lost (packet 0x63 carries them
+ * fresh every time the menu opens, and the save is fine); what goes stale is
+ * the CLIENT's copy of the quest records, which is what the menu gates its
+ * act tabs on. The client only learns those records from packet 0x28.
+ *
+ * Vanilla keeps that copy fresh as a side effect of its own act flow: the
+ * caravan NPCs and every quest-bearing dialog resend the full quest buffer
+ * (QUESTS_ActChange_*, Quests.cpp - each path ends in SendPacket0x28 with
+ * the player's real flags). This mod moves players between acts through its
+ * own gates, so a whole session can pass without one of those resends -
+ * which is exactly why the old "talk to Jerhyn" advice worked, and why any
+ * other quest NPC works just as well.
+ *
+ * The engine keeps that resend isolated in one two-argument function:
+ *   QUESTS_UpdatePlayerFlags @ D2Game+0x66D20   __fastcall(pGame, pPlayer)
+ * (D2MOO Quests.cpp:2510 - fetch pClient + pQuestData[difficulty], send
+ * 0x28). We call it on every area change and every 10 seconds, so the
+ * client's copy can never stay stale longer than that. Same resolve-and-
+ * guard pattern as the cow spawner: vanilla RVA into the root D2Game.dll,
+ * prolog verified before first use, silently disabled on mismatch. */
+#define QSYNC_RVA_UPDATEPLAYERFLAGS  0x66D20
+typedef void (__fastcall *QuestSyncUpdate_t)(void* pGame, void* pPlayer);
+
+static QuestSyncUpdate_t QuestSync_Resolve(void) {
+    static QuestSyncUpdate_t s_fn = NULL;
+    static BOOL s_tried = FALSE;
+    if (!s_tried) {
+        /* push esi / mov esi,edx / push edi / push esi / mov edi,ecx / call
+           - read out of the SHIPPED D2Game.dll, not out of D2MOO. */
+        static const BYTE expect[8] = { 0x56, 0x8B, 0xF2, 0x57,
+                                        0x56, 0x8B, 0xF9, 0xE8 };
+        s_tried = TRUE;
+        HMODULE h = GetModuleHandleA("D2Game.dll");
+        if (h) {
+            BYTE* p = (BYTE*)h + QSYNC_RVA_UPDATEPLAYERFLAGS;
+            if (memcmp(p, expect, sizeof(expect)) == 0)
+                s_fn = (QuestSyncUpdate_t)p;
+        }
+        Log("QUESTSYNC: QUESTS_UpdatePlayerFlags (D2Game+0x%X) %s\n",
+            QSYNC_RVA_UPDATEPLAYERFLAGS,
+            s_fn ? "resolved" : "PROLOG MISMATCH - quest sync disabled");
+    }
+    return s_fn;
+}
+
+static void QuestSync_Tick(void) {
+    static DWORD s_lastArea = 0;
+    static DWORD s_lastSendMs = 0;
+    static BOOL  s_dead = FALSE;
+    if (s_dead) return;
+
+    QuestSyncUpdate_t fn = QuestSync_Resolve();
+    if (!fn || !g_cachedPGame) return;
+
+    DWORD area = GetCurrentArea();
+    DWORD now = GetTickCount();
+    BOOL due = FALSE;
+    if (area && area != s_lastArea) { s_lastArea = area; due = TRUE; }
+    if (now - s_lastSendMs >= 10000) due = TRUE;
+    if (!due) return;
+
+    void* pPlayer = CustomBoss_GetServerPlayer(g_cachedPGame);
+    if (!pPlayer) return;
+    __try {
+        fn((void*)g_cachedPGame, pPlayer);
+        s_lastSendMs = now;
+    } __except(EXCEPTION_EXECUTE_HANDLER) {
+        s_dead = TRUE;   /* never walk into a faulting engine call twice */
+        Log("QUESTSYNC: exception during refresh - disabled for this session\n");
+    }
+}
+
 static void CheckAreaReach(void) {
     static DWORD lastArea = 0;
     DWORD area = GetCurrentArea();
@@ -4415,6 +4492,7 @@ static void RunCheckDetection(void) {
         DBG_CRUMB("detect:monsters");   ScanMonsters();
         DBG_CRUMB("detect:areareach");  CheckAreaReach();
         DBG_CRUMB("detect:waypoints");  CheckWaypoints();
+        DBG_CRUMB("detect:questsync");  QuestSync_Tick();
         DBG_CRUMB("detect:questflags"); CheckQuestFlags();
         DBG_CRUMB("detect:levelmiles"); CheckLevelMilestones();
         DBG_CRUMB("detect:reconcile");  ReconcileGatesFromQuests();
