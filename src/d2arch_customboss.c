@@ -27,9 +27,27 @@ static int        g_customBossCount = 0;
 static int        s_customBoss_lastArea = 0;
 static BOOL       s_customBoss_randSeeded = FALSE;
 
-/* Local helper: get server-side player unit from pGame's unit list. */
+/* Defined in d2arch_gameloop.c, which the unity build includes AFTER this
+ * file -- so it needs announcing here. It re-reads the engine's live game
+ * pointer, which is the only reliable answer to "which game is running". */
+static DWORD SyncCachedPGame(void);
+
+/* Local helper: get server-side player unit from pGame's unit list.
+ *
+ * The pGame callers hand in is usually g_cachedPGame, and during the window
+ * between one game ending and the next tick re-syncing, that still points at
+ * the FREED previous game. Dereferencing it faults. The twin of this function
+ * in d2arch_gameloop.c already re-reads the engine's live pointer first; this
+ * one did not, and it is the one the treasure-cow heartbeat and the object
+ * traps call every tick. A single finished playthrough logged 356 access
+ * violations, 338 of them here -- swallowed by the __except below, so nothing
+ * ever surfaced, but every one of them was a fault per frame across the whole
+ * load window. Re-sync first: the engine's own global is the only thing that
+ * knows which game is live. */
 static void* CustomBoss_GetServerPlayer(DWORD pGame) {
-    if (!pGame) return NULL;
+    DWORD live = SyncCachedPGame();
+    if (!live) return NULL;
+    pGame = live;
     __try {
         DWORD* pPlayerBuckets = (DWORD*)(pGame + 0x1120);
         for (int i = 0; i < 128; i++) {

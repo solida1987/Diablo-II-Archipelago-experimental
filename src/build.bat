@@ -15,6 +15,7 @@ cl /nologo /MT /O2 /W3 /LD /TP /D_CRT_SECURE_NO_WARNINGS ^
     d2detours_hook.cpp ^
     /Fe:D2Archipelago.dll ^
     /link /DEF:d2arch.def ^
+    /MAP:D2Archipelago.map ^
     user32.lib gdi32.lib kernel32.lib advapi32.lib
 
 if %ERRORLEVEL% NEQ 0 (

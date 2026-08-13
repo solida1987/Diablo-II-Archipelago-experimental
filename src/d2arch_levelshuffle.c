@@ -81,15 +81,29 @@ static const DungeonSet g_sets[] = {
     { 81, 3, { 97 },                  1, 0, "Forgotten Temple"      },
     { 82, 3, { 98 },                  1, 0, "Ruined Fane"           },
     { 82, 3, { 99 },                  1, 0, "Disused Reliquary"     },
-    /* Act 5 — main dungeons (off the act spine but contain WPs/quests) */
-    { 112, 5, { 113, 115 },           2, 0, "Crystallized Cavern"   },
-    { 117, 5, { 118, 119 },           2, 0, "Glacial Caves"         },
+    /* Act 5 - THE ACT SPINE. Both of these are PINNED (DS_FLAG_NO_SHUFFLE),
+     * and the comment that used to sit here calling them "off the act spine"
+     * was simply wrong. Read the Vis columns: 115 -> 117 (Tundra, outdoors)
+     * and 118 -> 120 (Rocky Summit). A set is only safe to shuffle if every
+     * member's Vis targets are inside the set or are the surfaceParent,
+     * because the exit handler below knows exactly one way out -- back to the
+     * parent -- and releases the player anywhere else. These two are
+     * corridors, not caves, so shuffling them let a tester walk from an Act 3
+     * entrance to Arreat Summit and finish the game from there. */
+    { 112, 5, { 113, 115 },           2, DS_FLAG_NO_SHUFFLE, "Crystallized Cavern" },
+    { 117, 5, { 118, 119 },           2, DS_FLAG_NO_SHUFFLE, "Glacial Caves"       },
     /* Nihlathak chain — entered via Anya-portal in Harrogath after Anya-rescue quest. */
     { 109, 5, { 121, 122, 123, 124 }, 4, 0, "Nihlathak chain"       },
     /* Cow Level — portal-only from Rogue Encampment via cube recipe. */
     {   1, 5, { 39 },                 1, DS_FLAG_IS_COW, "Cow Level (portal)" },
-    /* Cow-eligible partners: pure side dungeons in Act 5, no quest, no waypoint, off Crystallized Cavern. */
-    { 113, 5, { 114 },                1, DS_FLAG_COW_ELIGIBLE, "Cellar of Pity" },
+    /* Cow-eligible partners: pure side dungeons in Act 5, no quest, no
+     * waypoint. The cow SWAPS with its partner, so the partner ends up behind
+     * the cow portal and its cube recipe.
+     * Cellar of Pity is NOT eligible: level 114 is the Frozen River, where
+     * Anya is held, and Prison of Ice is progression in the apworld. It was
+     * flagged eligible under the description "whose loss is harmless", which
+     * put Anya behind Wirt's leg in every other seed. */
+    { 113, 5, { 114 },                1, 0, "Cellar of Pity" },
     { 115, 5, { 116 },                1, DS_FLAG_COW_ELIGIBLE, "Echo Chamber"   },
 };
 #define NUM_SETS  ((int)(sizeof(g_sets) / sizeof(g_sets[0])))

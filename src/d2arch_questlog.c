@@ -533,7 +533,7 @@ static void RenderTracker(void) {
         if (lmbDown && now2 - s_dragDbg > 500) {
             s_dragDbg = now2;
             BOOL hit = InRect(mx, my, g_trackerX, g_trackerY, TRACKER_W, TRACKER_HANDLE_H + 6);
-            Log("DRAG: lmb=1 mx=%d my=%d tracker=(%d,%d) w=%d h=%d hit=%d dragging=%d\n",
+            if (g_verboseInput) Log("DRAG: lmb=1 mx=%d my=%d tracker=(%d,%d) w=%d h=%d hit=%d dragging=%d\n",
                 mx, my, g_trackerX, g_trackerY, TRACKER_W, TRACKER_HANDLE_H + 6, hit, g_trackerDragging);
         }
     }

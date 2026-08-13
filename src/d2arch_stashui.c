@@ -452,7 +452,7 @@ void StashUIRender(void) {
 
     if (!fnRect || !fnText || !fnFont) {
         if (s_renderLogCounter % 120 == 0) {
-            Log("StashUIRender: fnRect=%p fnText=%p fnFont=%p (missing function pointer)\n",
+            if (g_verboseInput) Log("StashUIRender: fnRect=%p fnText=%p fnFont=%p (missing function pointer)\n",
                 fnRect, fnText, fnFont);
         }
         return;
@@ -463,7 +463,7 @@ void StashUIRender(void) {
     static int  s_openFrames = 0;
     static BOOL s_pendingCloseSwap = FALSE; /* close-swap deferred: cursor held an item */
     if (s_renderLogCounter % 120 == 0) {
-        Log("StashUIRender: called, isStashOpen=%d screenW=%d\n", (int)isOpen, g_screenW);
+        if (g_verboseInput) Log("StashUIRender: called, isStashOpen=%d screenW=%d\n", (int)isOpen, g_screenW);
     }
 
     /* Auto-swap back to Personal tab when stash closes. */
@@ -540,7 +540,7 @@ void StashUIRender(void) {
         if (!loggedFirstRender) {
             int x, y, w, h;
             StashUI_BtnRect(0, &x, &y, &w, &h);
-            Log("StashUIRender: STASH OPEN — drawing buttons starting at (%d,%d) size %dx%d, "
+            if (g_verboseInput) Log("StashUIRender: STASH OPEN — drawing buttons starting at (%d,%d) size %dx%d, "
                 "STASH_MAX_TABS=%d apMode=%d apGoalComplete=%d\n",
                 x, y, w, h, STASH_MAX_TABS, (int)g_apMode, (int)g_apGoalComplete);
             /* list every tab's access + position so we can confirm STK buttons are actually being included in the draw loop. */

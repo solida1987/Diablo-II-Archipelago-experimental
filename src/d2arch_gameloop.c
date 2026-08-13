@@ -1395,7 +1395,7 @@ static void ProcessPendingGameTick(void) {
         if (nd - s_lastOuter > 2000) {
             s_lastOuter = nd;
             void* probe = (g_cachedPGame && fnAddStat) ? GetServerPlayer(g_cachedPGame) : NULL;
-            Log("OUTER DRAIN diag: pGame=%p fnAddStat=%p pCurseTarget=%p pendLoot=%d\n",
+            if (g_verboseInput) Log("OUTER DRAIN diag: pGame=%p fnAddStat=%p pCurseTarget=%p pendLoot=%d\n",
                 g_cachedPGame, (void*)fnAddStat, probe, g_pendingLootDrop);
         }
     }

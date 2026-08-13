@@ -410,7 +410,7 @@ static LRESULT CALLBACK HookWndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
         mx = MouseX(); my = MouseY();
         if (pMouseX) pmx = *pMouseX;
         if (pMouseY) pmy = *pMouseY;
-        Log("RCLICK | shift=%d | MouseX/Y=(%d,%d) | pMouseX/Y=(%d,%d) "
+        if (g_verboseInput) Log("RCLICK | shift=%d | MouseX/Y=(%d,%d) | pMouseX/Y=(%d,%d) "
             "| WndXY=(%ld,%ld) | screen=%dx%d\n",
             (int)shiftHeld, mx, my, pmx, pmy, pt.x, pt.y,
             g_screenW, g_screenH);

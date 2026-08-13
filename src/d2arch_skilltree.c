@@ -69,45 +69,40 @@ static void ResolveBossLootTCs(void) {
     }
 }
 
-/* Cross-class skills that use anim mode SQ (18) — Whirlwind, Double Swing, martial arts etc. */
-static const int SQ_SKILLS_TO_CONVERT[] = {
-    133, /* Double Swing (bar) */
-    140, /* Double Throw (bar) */
-    143, /* Leap Attack (bar) */
-    151, /* Whirlwind (bar) */
-    257, /* Blade Sentinel (ass) */
-    259, /* Fists of Fire (ass) */
-    260, /* Dragon Claw (ass) */
-    266, /* Blade Fury (ass) */
-    269, /* Claws of Thunder (ass) */
-    274, /* Blades of Ice (ass) */
-    -1
-};
+/* Cross-class animation fallback.
+ *
+ * A skill whose anim mode is class-specific plays an animation sequence that
+ * only exists for its own class, and often only for certain weapon classes.
+ * Hand it to another class through the skill pool and the client has nothing
+ * to play: at best the skill is unusable, at worst it crashes.
+ *
+ * This used to be three hand-maintained lists of skill ids. They went stale,
+ * and how we found out is instructive: Jab sat in the TH list, but Jab's anim
+ * is SQ, so the TH branch never matched it and the SQ branch never looked at
+ * it. A paladin holding a sword got Jab's sequence animation and crashed. An
+ * audit of Skills.txt then found eleven skills in that state -- Jab, Impale,
+ * Inferno, Lightning, Chain Lightning, Charge, Leap, Frenzy, Arctic Blast,
+ * Dragon Tail, Dragon Flight -- and four more entries filed under an anim
+ * they do not have, which is exactly what made the lists look complete.
+ *
+ * So there is no list any more. The rule reads the anim mode itself, and
+ * cannot fall out of date:
+ *
+ *     non-native class + anim in {S1..S4, TH, KK, SQ}  ->  A1
+ *
+ * Native classes keep their own animation untouched. A1 is the plain attack
+ * animation every class has for every weapon, and it is the same fallback
+ * that fixed Whirlwind. */
+#define ANIM_A1   7    /* PLRMODE_ATTACK1 - exists for every class+weapon */
+#define ANIM_TH   11   /* throw    - amazon javelins */
+#define ANIM_KK   12   /* kick     - assassin kicks */
+#define ANIM_S1   13   /* S1..S4   - per-class special casts */
+#define ANIM_S4   16
+#define ANIM_SQ   18   /* sequence - whirlwind, jab, charge, frenzy, ... */
 
-/* Amazon javelin/throw skills with anim TH (11). */
-static const int TH_SKILLS_TO_CONVERT[] = {
-    10, /* Jab (ama) */
-    15, /* Poison Javelin (ama) */
-    20, /* Lightning Bolt (ama) */
-    25, /* Plague Javelin (ama) */
-    30, /* Power Strike (ama) */
-    35, /* Lightning Fury (ama) */
-    40, /* Charged Strike (ama) */
-    45, /* Lightning Strike (ama) */
-    -1
-};
-
-/* Assassin kick skills using anim KK (12). */
-static const int KK_SKILLS_TO_CONVERT[] = {
-    255, /* Dragon Talon (ass) */
-    -1
-};
-
-static BOOL SkillIdInList(int skillId, const int* list) {
-    for (int i = 0; list[i] != -1; i++) {
-        if (list[i] == skillId) return TRUE;
-    }
-    return FALSE;
+static BOOL AnimNeedsCrossClassFallback(BYTE anim) {
+    return (anim >= ANIM_S1 && anim <= ANIM_S4) ||
+           anim == ANIM_TH || anim == ANIM_KK || anim == ANIM_SQ;
 }
 
 /* vanilla class-skill-list cache for OnCharacterUnload restore. */
@@ -170,17 +165,10 @@ static void PatchAllSkillAnimations(void) {
                 *(BYTE*)(rec + SKT_ANIM) = 7;
                 animPatched++;
             }
-            if (charClass >= 0 && charClass <= 6) {
-                if (anim == 18 && SkillIdInList(i, SQ_SKILLS_TO_CONVERT)) {
-                    *(BYTE*)(rec + SKT_ANIM) = 7;
-                    crossClassPatched++;
-                } else if (anim == 11 && SkillIdInList(i, TH_SKILLS_TO_CONVERT)) {
-                    *(BYTE*)(rec + SKT_ANIM) = 7;
-                    crossClassPatched++;
-                } else if (anim == 12 && SkillIdInList(i, KK_SKILLS_TO_CONVERT)) {
-                    *(BYTE*)(rec + SKT_ANIM) = 7;
-                    crossClassPatched++;
-                }
+            if (charClass >= 0 && charClass <= 6 &&
+                AnimNeedsCrossClassFallback(anim)) {
+                *(BYTE*)(rec + SKT_ANIM) = ANIM_A1;
+                crossClassPatched++;
             }
 
             /* FIX 2: Remove weapon type restrictions for class-owned skills. */
@@ -254,16 +242,8 @@ static void RestoreNativeAnimsForClass(int playerClass) {
                 want = orig;
             } else {
                 /* Non-native — re-apply the same A1 fallback as PatchAllSkillAnimations */
-                want = orig;
-                if (orig >= 13 && orig <= 16) {
-                    want = 7;
-                } else if (orig == 18 && SkillIdInList(i, SQ_SKILLS_TO_CONVERT)) {
-                    want = 7;
-                } else if (orig == 11 && SkillIdInList(i, TH_SKILLS_TO_CONVERT)) {
-                    want = 7;
-                } else if (orig == 12 && SkillIdInList(i, KK_SKILLS_TO_CONVERT)) {
-                    want = 7;
-                }
+                want = AnimNeedsCrossClassFallback(orig)
+                       ? (BYTE)ANIM_A1 : orig;
             }
 
             DWORD rec = arr + i * SKT_SIZE;

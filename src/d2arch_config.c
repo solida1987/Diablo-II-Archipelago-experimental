@@ -13,6 +13,8 @@ static char g_cfgPassword[32] = {0};
 
 /* Forward declaration — Log is defined after GetSaveDir but needed by it */
 static void Log(const char* fmt, ...);
+/* [debug] VerboseInput -- per-frame input/render tracing, off by default. */
+static int g_verboseInput = 0;
 
 /* Helper: check if a directory exists */
 static BOOL DirExists(const char* path) {
@@ -44,6 +46,12 @@ static void LoadConfig(void) {
     GetPrivateProfileStringA("ap", "Password", "", g_cfgPassword, 32, iniPath);
 
     /* Class filter settings */
+    /* Per-frame input and render tracing. A single finished playthrough
+     * logged 1388 DRAG lines, 1247 RCLICK, 703 OUTER DRAIN and 671
+     * StashUIRender -- useful while building those features, and pure
+     * noise afterwards. It buried the real signals in the log a tester
+     * sent in, so it is off unless someone turns it on to debug input. */
+    g_verboseInput   = GetPrivateProfileIntA("debug", "VerboseInput", 0, iniPath);
     g_classFilter    = GetPrivateProfileIntA("settings", "ClassFilter", 0, iniPath);
     g_clsEnabled[0]  = GetPrivateProfileIntA("settings", "ClsAmazon", 1, iniPath);
     g_clsEnabled[1]  = GetPrivateProfileIntA("settings", "ClsSorceress", 1, iniPath);
