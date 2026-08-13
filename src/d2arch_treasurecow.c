@@ -34,9 +34,6 @@ static DWORD          s_tc_lastRollTick = 0;          /* for re-roll */
 static BOOL           s_tc_randSeeded = FALSE;
 #define TC_REROLL_INTERVAL_MS 60000                    /* re-roll every 60s if camped */
 
-/* How many boss-loot tables a dead Treasure Cow is worth. */
-#define TC_LOOT_TABLES 12
-
 /* dedicated treasure-cow log file. */
 static void TCLog(const char* fmt, ...) {
     char dir[MAX_PATH], path[MAX_PATH];
@@ -281,46 +278,33 @@ static void* TreasureCow_Spawn(void* pGame, void* pSrvPlayer, int* outUnitId) {
     }
 }
 
-/* THE COW'S HOARD — sparkly chests instead of hand-delivered items The cow used to pay out through g_pendingLootDrop, i.e. */
-
-#define TC_SPARKLY_CHEST_ID   455        /* objects.txt row — InitFn 57 */
-#define TC_CHESTS_MIN         3
-#define TC_CHESTS_MAX         5
-
-/* Drop the hoard: 3-5 sparkly chests in a ring around the player.
+/* THE COW'S HOARD — the engine's own treasure class
  *
- * The spawner itself lives in d2arch_objtraps.c. It used to be duplicated here,
- * which meant two copies of the same RVA and prolog guard — and a D2Game update
- * would have to be found and fixed twice. */
-static int TreasureCow_SpawnHoardChests(void) {
-    static const int ids[] = { TC_SPARKLY_CHEST_ID };
-    int want = TC_CHESTS_MIN + (rand() % (TC_CHESTS_MAX - TC_CHESTS_MIN + 1));
-    int spawned = ObjTrap_SpawnRing(ids, 1, want, 3, "cow hoard");
-    Log("TreasureCow: spawned %d/%d sparkly chests (object %d)\n",
-        spawned, want, TC_SPARKLY_CHEST_ID);
-    return spawned;
-}
+ * Two earlier attempts paid the cow out from our side, and both had a tell.
+ * The first handed items over through fnCI: that path knows nothing about
+ * magic find and quietly gives up when the inventory is full, which is where
+ * every "the cow dropped nothing" report came from. The second spawned sparkly
+ * chests and let D2 fill them — the loot was real, but the chests are solid
+ * objects, and in a one-tile corridor one of them walls the player in. A chest
+ * with nowhere to stand is simply lost, so the reward shrank silently too.
+ *
+ * The cow is a superunique, and SuperUniques.txt carries TC / TC(N) / TC(H)
+ * columns. The Cow King has always used his; ours were empty, so the cow fell
+ * through to the base monster's ordinary "Act 4 Unique B". Filling those three
+ * cells in hands the whole thing to the engine: magic find, quality rolls and
+ * item level all apply because it is the same code that drops Baal's loot.
+ * Nothing of ours is placed on the floor, so nothing can block a corridor and
+ * nothing can be lost. See "AP Cow Hoard" in TreasureClassEx.txt. */
 
-/* Pay out a killed cow. */
+/* Announce a killed cow. The drop itself is the engine's, on the death it
+ * already saw; this is the message, plus the log line that lets a "the cow
+ * gave me nothing" report be checked against whether we even saw the kill. */
 static void TreasureCow_AwardHoard(const char* why, int unitId) {
-    int chests = TreasureCow_SpawnHoardChests();
-    if (chests > 0) {
-        char msg[96];
-        _snprintf(msg, sizeof(msg),
-                  "The cow's hoard spills out - %d chests!", chests);
-        msg[sizeof(msg) - 1] = 0;
-        ShowNotify(msg);
-        Log("TreasureCow: cow unitId=%d %s — %d sparkly chests\n",
-            unitId, why, chests);
-    } else {
-        g_pendingLootDrop += TC_LOOT_TABLES;
-        TCLog("cow unitId=%d %s -> chest spawn unavailable, fell back to %d "
-              "loot tables (pending=%d)", unitId, why, TC_LOOT_TABLES,
-              g_pendingLootDrop);
-        Log("TreasureCow: cow unitId=%d %s — chest spawn unavailable, queued "
-            "%d loot tables\n", unitId, why, TC_LOOT_TABLES);
-        ShowNotify("The cow's hoard spills out!");
-    }
+    ShowNotify("The cow's hoard spills out!");
+    TCLog("cow unitId=%d %s -> hoard is the AP Cow Hoard treasure class",
+          unitId, why);
+    Log("TreasureCow: cow unitId=%d %s — hoard dropped by treasure class\n",
+        unitId, why);
 }
 
 /* Check tracked cows each tick: if any died, trigger loot drop. */

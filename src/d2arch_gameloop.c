@@ -1525,7 +1525,7 @@ static void ProcessPendingGameTick(void) {
             /* === REWARD_LOOT: Drop random boss loot table from quest reward === 1.7.1: cap the queue at 5 so accumulated rewards don't carpet the floor at once; 3-second cooldown between drops to avoid item-count overflow; IsTown guard so towns stay clean; ilvl floor of 30 keeps low-level drops useful; notify only on successful drop (nDropped > 0). */
             {
                 static DWORD s_lastLootDropMs = 0;
-                /* was 5. The clamp exists so ordinary rewards that pile up while you are in a menu do not carpet the floor at once; but the Treasure Cow is exactly the case where carpeting the floor IS the reward, and it queues TC_LOOT_TABLES (12) on death. A clamp of 5 silently threw the tail away. 16 leaves headroom for a cow plus whatever else was already pending. */
+                /* was 5. The clamp exists so ordinary rewards that pile up while you are in a menu do not carpet the floor at once. It was raised to 16 for the Treasure Cow, which used to queue 12 tables on death and lost the tail to a clamp of 5. The cow now drops through its own treasure class instead, but the headroom still serves any other burst. */
                 if (g_pendingLootDrop > 16) g_pendingLootDrop = 16;
                 /* log entry to drain block so we can see which condition is blocking. */
                 if (g_pendingLootDrop > 0) {
