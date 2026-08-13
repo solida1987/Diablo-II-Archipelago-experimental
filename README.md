@@ -28,15 +28,20 @@ original resolution, on Diablo II's own renderer.
 | Project | What it adds | Where to get it |
 |---|---|---|
 | **D2GL** by Bayaraa | HD rendering, widescreen, filtering, higher frame rates | https://github.com/bayaraa/d2gl |
-| **SGD2FreeRes** by Mir Drualga | Removes the fixed-resolution limit | [https://github.com/SlashGaming/SlashGaming-Diablo-II-Free-Resolution](https://github.com/mir-diablo-ii-tools/SlashGaming-Diablo-II-Free-Resolution) |
+| **SGD2FreeRes** by Mir Drualga | Removes the fixed-resolution limit | https://github.com/mir-diablo-ii-tools/SlashGaming-Diablo-II-Free-Resolution |
 | **DSOAL** | Restores the original 3D positional audio | https://github.com/kcat/dsoal |
 
 **How to install them**
 
 1. Download the release you want from the project's own page above.
+   **For SGD2FreeRes, take the "Vanilla" download, not the "Modders" one.** The
+   Modders build expects you to repack its data into `patch_d2.mpq` yourself;
+   the Vanilla build is the one that works by dropping the files in, which is
+   what this mod's settings are written for.
 2. Extract it and copy its files into your **game folder** — the folder holding
    `Diablo II.exe`, which the launcher opens for you from **Open game folder**.
-3. Start the game as usual.
+3. Start the game as usual. The launcher's **Settings** page tells you which
+   add-ons it can see, so you can check the install worked.
 
 The launcher checks for `glide3x.dll` (part of D2GL) each time it starts the
 game. Find it and it uses the Glide renderer, so D2GL takes over; don't find it
