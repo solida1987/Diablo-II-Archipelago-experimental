@@ -28,7 +28,7 @@ original resolution, on Diablo II's own renderer.
 | Project | What it adds | Where to get it |
 |---|---|---|
 | **D2GL** by Bayaraa | HD rendering, widescreen, filtering, higher frame rates | https://github.com/bayaraa/d2gl |
-| **SGD2FreeRes** by Mir Drualga | Removes the fixed-resolution limit | https://github.com/SlashGaming/SlashGaming-Diablo-II-Free-Resolution |
+| **SGD2FreeRes** by Mir Drualga | Removes the fixed-resolution limit | [https://github.com/SlashGaming/SlashGaming-Diablo-II-Free-Resolution](https://github.com/mir-diablo-ii-tools/SlashGaming-Diablo-II-Free-Resolution) |
 | **DSOAL** | Restores the original 3D positional audio | https://github.com/kcat/dsoal |
 
 **How to install them**
