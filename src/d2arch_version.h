@@ -5,9 +5,9 @@
 
 #define D2ARCH_VERSION_MAJOR    1
 #define D2ARCH_VERSION_MINOR    1
-#define D2ARCH_VERSION_PATCH    10
+#define D2ARCH_VERSION_PATCH    11
 #define D2ARCH_VERSION_CHANNEL  "EX"            /* release channel — Experimental */
-#define D2ARCH_VERSION_STRING   "EX_1_1_10"     /* token id (keep underscores, upper) */
+#define D2ARCH_VERSION_STRING   "EX_1_1_11"     /* token id (keep underscores, upper) */
 
 /* The user-visible version strings are DERIVED from MAJOR/MINOR/PATCH so they can never drift out of sync again. */
 #define D2ARCH_STR2(x)  #x
