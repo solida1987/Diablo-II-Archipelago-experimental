@@ -5,7 +5,7 @@
 
 #define D2ARCH_VERSION_MAJOR    1
 #define D2ARCH_VERSION_MINOR    1
-#define D2ARCH_VERSION_PATCH    13
+#define D2ARCH_VERSION_PATCH    14
 #define D2ARCH_VERSION_CHANNEL  "EX"            /* release channel — Experimental */
 #define D2ARCH_VERSION_STRING   "EX_1_1_13"     /* token id (keep underscores, upper) */
 

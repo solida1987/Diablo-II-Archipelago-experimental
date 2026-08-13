@@ -162,8 +162,39 @@ static void GetArchDir(char* buf, int bufSize) {
     CreateDirectoryA(buf, NULL);
 }
 
-/* Detect game resolution from SGD2FreeResolution.json. */
+/* Is a file next to the game executable? */
+static BOOL GameDirHasFile(const char* name) {
+    char path[MAX_PATH];
+    GetModuleFileNameA(NULL, path, MAX_PATH);
+    char* sl = strrchr(path, '\\');
+    if (sl) *(sl + 1) = 0;
+    if ((int)strlen(path) + (int)strlen(name) >= MAX_PATH) return FALSE;
+    strcat(path, name);
+    return GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES;
+}
+
+/* Detect game resolution from SGD2FreeResolution.json.
+ *
+ * The .json is OURS and always ships; SGD2FreeRes itself does not -- it is
+ * AGPL and the player installs it. So the file being present says nothing
+ * about the resolution the game is actually running at. Believing it anyway
+ * lays every panel, the HUD tracker and the mouse mapping out for 1068x600
+ * while the engine is really drawing 800x600.
+ *
+ * And SGD2FreeRes alone is not enough either: nothing in this mod loads it.
+ * d2gl does, through `load_dlls_late=SGD2FreeRes.dll` in d2gl.ini. Without
+ * d2gl the DLL just sits there. Both have to be present for the .json to
+ * describe reality. */
 static void DetectResolution(void) {
+    BOOL haveGlide = GameDirHasFile("glide3x.dll");
+    BOOL haveFreeRes = GameDirHasFile("SGD2FreeRes.dll");
+    if (!haveGlide || !haveFreeRes) {
+        Log("DetectResolution: SGD2FreeRes not active (glide3x.dll=%d "
+            "SGD2FreeRes.dll=%d), using engine default %dx%d\n",
+            haveGlide, haveFreeRes, g_screenW, g_screenH);
+        return;
+    }
+
     char jsonPath[MAX_PATH];
     GetModuleFileNameA(NULL, jsonPath, MAX_PATH);
     char* sl = strrchr(jsonPath, '\\');
