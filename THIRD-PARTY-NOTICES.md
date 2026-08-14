@@ -34,16 +34,6 @@ its debugger.
 - **Source:** https://github.com/ThePhrozenKeep/D2MOO
 - **Licence:** [`licenses/D2MOO-MIT.txt`](licenses/D2MOO-MIT.txt)
 
-### cnc-ddraw — MIT
-A DirectDraw wrapper. Diablo II 1.10's own DirectDraw does not initialise on
-modern Windows — it fails with "Error 22" — so this stands in for it and the
-game renders correctly without any optional add-on installed.
-
-- **Files:** `ddraw.dll`, `ddraw.ini`, `winmm.dll`
-- **Copyright:** © 2025 github.com/FunkyFr3sh
-- **Source:** https://github.com/FunkyFr3sh/cnc-ddraw
-- **Licence:** [`licenses/cnc-ddraw-MIT.txt`](licenses/cnc-ddraw-MIT.txt)
-
 ### SFmpqapi — BSD-style (2-clause)
 A library for reading and writing MPQ archives, used by the mod's tooling.
 
@@ -56,16 +46,22 @@ A library for reading and writing MPQ archives, used by the mod's tooling.
 
 ## Not distributed — installed by the player
 
-Three optional add-ons used to be included in this package. They no longer are.
+Nothing in this list travels with the mod. The first is **required** — the game
+cannot start without it — and the other three are optional.
 
 | Component | Licence | What it does |
 |---|---|---|
+| **[cnc-ddraw](https://github.com/FunkyFr3sh/cnc-ddraw)** | MIT | **Required.** DirectDraw wrapper — Diablo II 1.10's own DirectDraw does not initialise on modern Windows and the game stops at "Error 22" without it |
 | [d2gl](https://github.com/bayaraa/d2gl) | GPL-3.0 | Glide-to-OpenGL renderer — the HD graphics option |
 | [SGD2FreeRes](https://github.com/mir-diablo-ii-tools/SlashGaming-Diablo-II-Free-Resolution) | AGPL-3.0-or-later | Unlocks resolutions the original game does not offer |
 | [DSOAL](https://github.com/kcat/dsoal) | LGPL-2.1 | Restores the hardware-accelerated 3D audio the game was written for |
 
-Bundling them was a mistake, and it is worth being plain about why rather than
-quietly dropping them.
+The three copyleft ones were bundled by mistake, and it is worth being plain
+about why rather than quietly dropping them. cnc-ddraw is a different case: it
+is MIT and could be shipped, but this project distributes nobody else's binaries
+now, so the player installs that one too. The launcher looks for it, copies it
+out of the player's own Diablo II folder if one is already there, and refuses to
+start with instructions if it is not.
 
 Each of these is an independent program that Diablo II loads in its own right.
 None of them is linked into this project's code: the mod's own library,
@@ -97,8 +93,8 @@ component is installed.
 
 ## How the bundled components relate to this project's own code
 
-The four components listed under **Bundled components** are all under
-permissive licences (MIT and BSD 2-clause) that impose no condition beyond
+The components listed under **Bundled components** are all under permissive
+licences (MIT and BSD 2-clause) that impose no condition beyond
 keeping the copyright notice and licence text — which this file and the
 `licenses/` directory do.
 

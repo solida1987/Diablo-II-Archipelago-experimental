@@ -15,7 +15,6 @@ nothing in LICENSE grants any right over them:
 
   D2.Detours ............ MIT              (c) 2017 Lectem
   D2MOO ................. MIT              (c) 2020-2025 The Phrozen Keep community
-  cnc-ddraw ............. MIT              (c) 2025 github.com/FunkyFr3sh
   SFmpqapi .............. BSD 2-clause     (c) 2002-2010 ShadowFlare
 
 Each component is described in full -- what it does, which files it provides,
@@ -27,6 +26,14 @@ the licenses/ directory and the components' own copyright notices intact.
 
 NOT DISTRIBUTED WITH THIS PACKAGE
 ---------------------------------
+cnc-ddraw (MIT, (c) github.com/FunkyFr3sh) is REQUIRED and is not included
+either. Diablo II 1.10's own DirectDraw does not initialise on modern Windows,
+so the game cannot start without a wrapper. It is MIT and could have been
+shipped; it is not, because this project distributes nobody else's binaries.
+The launcher looks for it, adopts one from the player's own Diablo II folder if
+it is there, and refuses to start with instructions if it is not.
+Get it from https://github.com/FunkyFr3sh/cnc-ddraw
+
 Earlier versions of this package also contained d2gl (GPL-3.0), SlashGaming
 Diablo II Free Resolution (AGPL-3.0-or-later) and DSOAL (LGPL-2.1). Bundling
 them was a mistake: distributing a copyleft program in the same package as this

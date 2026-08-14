@@ -12,6 +12,28 @@ Installation, the 1.10f requirement and everything else about running the mod
 are documented in the stable repository's README. This build line installs the
 same way, through the Multiworld Launcher.
 
+## Required: a DirectDraw wrapper (cnc-ddraw)
+
+**The game will not start without this one.** Diablo II 1.10f is from 2003 and
+its own DirectDraw no longer initialises on Windows 10 or 11 — without a wrapper
+it stops with *"Error 22: A critical error has occurred while initializing
+DirectDraw"* before the main menu.
+
+The mod does not include one. Install it yourself:
+
+1. Download **cnc-ddraw** from
+   https://github.com/FunkyFr3sh/cnc-ddraw/releases/latest
+2. Open the zip and copy **`ddraw.dll`** (and `ddraw.ini` if present) into your
+   **game folder** — the folder holding `Diablo II.exe`. The launcher opens it
+   for you from **Open game folder**.
+3. Press Play.
+
+cnc-ddraw is free and open source (MIT) by FunkyFr3sh. If your own Diablo II
+installation already has a `ddraw.dll`, the launcher copies that one across
+automatically and there is nothing to download. If it cannot find one anywhere,
+it stops before launching and tells you this rather than letting the game fail
+with an error box that explains nothing.
+
 ## Optional: HD graphics, free resolution and 3D sound
 
 The mod runs on its own. Three well-known Diablo II community projects make it
@@ -22,10 +44,8 @@ and those licences place conditions on *distributing* the software that this
 project is not in a position to meet. Using them alongside this mod is entirely
 your right as a user; handing them out is what carries obligations.
 
-Everything below is optional. Skip it and the game still runs — just at the
-original resolution. The renderer it falls back to is cnc-ddraw, which ships
-with the mod: Diablo II 1.10's own DirectDraw no longer starts on modern
-Windows, so something has to stand in for it either way.
+Everything below is optional — unlike cnc-ddraw above, the game runs fine
+without all three, just at the original resolution and without 3D sound.
 
 | Project | What it adds | Where to get it |
 |---|---|---|
