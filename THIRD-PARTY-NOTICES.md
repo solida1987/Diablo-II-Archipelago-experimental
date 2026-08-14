@@ -35,10 +35,11 @@ its debugger.
 - **Licence:** [`licenses/D2MOO-MIT.txt`](licenses/D2MOO-MIT.txt)
 
 ### cnc-ddraw — MIT
-A DirectDraw wrapper that lets a 2003 game render correctly on modern Windows.
-Only its `winmm.dll` component is shipped.
+A DirectDraw wrapper. Diablo II 1.10's own DirectDraw does not initialise on
+modern Windows — it fails with "Error 22" — so this stands in for it and the
+game renders correctly without any optional add-on installed.
 
-- **Files:** `winmm.dll`
+- **Files:** `ddraw.dll`, `ddraw.ini`, `winmm.dll`
 - **Copyright:** © 2025 github.com/FunkyFr3sh
 - **Source:** https://github.com/FunkyFr3sh/cnc-ddraw
 - **Licence:** [`licenses/cnc-ddraw-MIT.txt`](licenses/cnc-ddraw-MIT.txt)

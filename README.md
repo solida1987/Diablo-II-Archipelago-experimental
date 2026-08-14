@@ -23,7 +23,9 @@ project is not in a position to meet. Using them alongside this mod is entirely
 your right as a user; handing them out is what carries obligations.
 
 Everything below is optional. Skip it and the game still runs — just at the
-original resolution, on Diablo II's own renderer.
+original resolution. The renderer it falls back to is cnc-ddraw, which ships
+with the mod: Diablo II 1.10's own DirectDraw no longer starts on modern
+Windows, so something has to stand in for it either way.
 
 | Project | What it adds | Where to get it |
 |---|---|---|
