@@ -53,7 +53,7 @@ public class D2Plugin : IGamePlugin
 
     public string GameId      => Experimental ? "diablo2_archipelago_experimental" : "diablo2_archipelago";
     public string DisplayName => Experimental ? "Diablo II: LoD (Experimental)"   : "Diablo II: Lord of Destruction";
-    public string Subtitle    => Experimental ? "Randomiser Mod — Experimental"   : "Randomiser Mod";
+    public string Subtitle    => Experimental ? "Randomizer Mod — Experimental"   : "Randomizer Mod";
     // Icon reuses the stable art for both channels (no separate experimental icon).
     public string IconPath    => Path.Combine(AppContext.BaseDirectory, "Assets", "diablo2_archipelago.png");
 
@@ -270,6 +270,55 @@ public class D2Plugin : IGamePlugin
     // own entry, fully isolated from the stable install.
     // initializer on the second registration in App.xaml.cs.
     public bool Experimental { get; protected init; } = false;
+
+    ///
+    /// The world file this channel ships, and the name Archipelago knows it by.
+    ///
+    /// ⚠⚠ The two channels used to publish the SAME identity: file
+    /// `diablo2_archipelago.apworld`, module `diablo2_archipelago`, game
+    /// "Diablo II Archipelago". ApworldSync copies into custom_worlds by file
+    /// name with overwrite:true, and Archipelago keys worlds by the game
+    /// string, so the engine could only ever hold one of them -- whichever
+    /// channel was installed last, for BOTH cards. An experimental YAML
+    /// carrying act_boss_shuffle then failed to generate against stable's
+    /// world. Separate identities are the only thing that actually fixes it.
+    ///
+    public string ApWorldFileName => Experimental
+        ? "diablo2_archipelago_experimental.apworld"
+        : "diablo2_archipelago.apworld";
+
+    /// The `game:` line a YAML for THIS channel must carry.
+    public string ApWorldGameName => Experimental
+        ? "Diablo II Archipelago Experimental"
+        : "Diablo II Archipelago";
+
+    ///
+    /// Remove any OTHER .apworld left in this channel's world folder.
+    ///
+    /// ⚠⚠ Renaming the file is not enough on its own. ApworldSync.FindApworlds
+    /// scans the folder — `Directory.EnumerateFiles(root, "*.apworld",
+    /// AllDirectories)` — and copies everything it finds into custom_worlds.
+    /// An experimental install that upgraded from the old naming would still
+    /// have `diablo2_archipelago.apworld` sitting beside the new file, and
+    /// London would faithfully copy that stale stable-named world over the
+    /// real stable one. The rename would have moved the collision, not ended
+    /// it. Same lesson as ApworldUpdater's stale-asset cleanup.
+    ///
+    private void PurgeForeignApworlds(string apworldDir)
+    {
+        try
+        {
+            foreach (string f in Directory.EnumerateFiles(apworldDir, "*.apworld"))
+            {
+                if (string.Equals(Path.GetFileName(f), ApWorldFileName,
+                                  StringComparison.OrdinalIgnoreCase))
+                    continue;
+                try { File.Delete(f); }
+                catch (Exception) { /* leaving one behind is not worth failing the install */ }
+            }
+        }
+        catch (Exception) { /* no folder, no problem */ }
+    }
 
     private string GitHubRepo => Experimental
         ? "Diablo-II-Archipelago-experimental"
@@ -917,7 +966,7 @@ public class D2Plugin : IGamePlugin
         // Build direct CDN download URLs — no REST API call needed.
         string packageUrl  = DownloadUrl(tag, "game_package.zip");
         string manifestUrl = DownloadUrl(tag, "game_manifest.json");
-        string apworldUrl  = DownloadUrl(tag, "diablo2_archipelago.apworld");
+        string apworldUrl  = DownloadUrl(tag, ApWorldFileName);
 
         if (!IsInstalled)
         {
@@ -1118,7 +1167,8 @@ public class D2Plugin : IGamePlugin
                 string apworldDir = Path.Combine(GameDirectory, "apworld");
                 Directory.CreateDirectory(apworldDir);
                 await DownloadSimpleAsync(apworldUrl,
-                    Path.Combine(apworldDir, "diablo2_archipelago.apworld"), ct);
+                    Path.Combine(apworldDir, ApWorldFileName), ct);
+                PurgeForeignApworlds(apworldDir);
             }
 
             progress.Report((98, "Cleaning data cache..."));
@@ -1306,7 +1356,8 @@ public class D2Plugin : IGamePlugin
                 string apworldDir = Path.Combine(GameDirectory, "apworld");
                 Directory.CreateDirectory(apworldDir);
                 await DownloadSimpleAsync(apworldUrl,
-                    Path.Combine(apworldDir, "diablo2_archipelago.apworld"), ct);
+                    Path.Combine(apworldDir, ApWorldFileName), ct);
+                PurgeForeignApworlds(apworldDir);
             }
             catch { /* non-fatal — apworld update failure doesn't block the game */ }
         }
@@ -1402,6 +1453,17 @@ public class D2Plugin : IGamePlugin
 
                 if (USER_EDITABLE_FILES.Contains(fileName)) continue; // present = valid
 
+                // Seed-patched tables: present = valid, size is ours.
+                //
+                // The randomizer rewrites these per seed (requirement columns,
+                // vendor stocking, level generation), so their size legitimately
+                // differs from the package's. They are normally pristine at this
+                // point — ApplySeed restores on exit — but a crash leaves them
+                // patched, and reporting "wrong size" then sends the player into
+                // a repair for a file that is exactly as it should be. Missing
+                // still counts: that IS broken, and repair puts it back.
+                if (D2DataFiles.IsManaged(fileName)) continue;
+
                 long expectedSize = 0;
                 if (entry.TryGetProperty("size", out var sizeEl)) expectedSize = sizeEl.GetInt64();
                 if (expectedSize > 0)
@@ -1461,6 +1523,37 @@ public class D2Plugin : IGamePlugin
         foreach (string r in restored)
             if (r.StartsWith("data/global/excel/", StringComparison.OrdinalIgnoreCase))
                 D2DataFiles.RefreshBackupFile(GameDirectory, Path.GetFileName(r));
+
+        // ⚠ The manifest MUST be refreshed from the same tag the files came from.
+        //
+        // Repair pulls the LATEST package. If the local manifest is older, the
+        // files it just wrote will not match it — so the very next launch finds
+        // the same "wrong size" files, downloads the same 9.9 MB package, and
+        // repairs them again. Forever.
+        //
+        // A tester hit exactly that: every launch spent 75 seconds re-downloading
+        // and repairing five files that were already correct, because nothing
+        // ever told the manifest what had happened. Rewriting it here is what
+        // makes a repair actually finish.
+        if (restored.Count > 0)
+        {
+            try
+            {
+                string manifestJson = await _http.GetStringAsync(
+                    DownloadUrl(tag, "game_manifest.json"), ct);
+                File.WriteAllText(Path.Combine(GameDirectory, "game_manifest.json"),
+                                  manifestJson);
+                progress.Report((100, $"Restored {restored.Count} file(s); "
+                                    + "install record updated."));
+            }
+            catch (Exception)
+            {
+                // The files ARE repaired; only the record of them is stale. Worth
+                // saying nothing about here rather than turning a successful
+                // repair into a reported failure — the next verify simply runs
+                // again.
+            }
+        }
 
         return (restored, wanted.ToList()); // leftover = not present in the package
     }
@@ -1721,7 +1814,18 @@ public class D2Plugin : IGamePlugin
         try
         {
             if (GetSlotData?.Invoke() is not JsonElement sd || sd.ValueKind != JsonValueKind.Object)
+            {
+                // Never silent. Every per-seed setting the player chose --
+                // item/skill requirements, the shuffles, chest isolation --
+                // rides on this slot_data, so returning quietly here starts a
+                // run whose YAML did nothing and gives the player no way to
+                // know. It cost two rounds of "it still does not work".
+                LogLine?.Invoke("[Diablo II] The seed's settings could not be read "
+                              + "from the server yet, so the game is starting with "
+                              + "UNMODIFIED tables. Close the game, wait for the "
+                              + "server connection, and launch again.");
                 return;
+            }
 
             var settings = D2RandomizerSettings.FromSlotData(sd);
             long seed = worldKey;
@@ -1744,12 +1848,28 @@ public class D2Plugin : IGamePlugin
                 SetIniSectionValue(lines, "settings", "StashIsolated", settings.StashIsolated ? "1" : "0");
                 File.WriteAllLines(ini, lines);
             }
-            catch { /* non-fatal */ }
+            catch (Exception ex)
+            {
+                LogLine?.Invoke("[Diablo II] Could not write d2arch.ini: " + ex.Message
+                              + " - chest isolation and the per-seed key may be wrong.");
+            }
 
             await D2RandomizeProgress.RunApplyAsync(settings, seed, saveFolder, GameDirectory);
             _apAppliedDataTables = true;
+
+            // Prove it landed rather than assuming it: the tables the game is
+            // about to load must match the ones this seed generated.
+            var v = D2DataFiles.VerifyApplied(saveFolder, GameDirectory);
+            if (v.total == 0 || v.ok != v.total)
+                LogLine?.Invoke($"[Diablo II] WARNING: only {v.ok}/{v.total} of the "
+                              + "seed's data tables are in place - some settings "
+                              + "(item requirements, shuffles) may not apply.");
         }
-        catch { /* non-fatal — fall back to the DLL's runtime shuffle */ }
+        catch (Exception ex)
+        {
+            LogLine?.Invoke("[Diablo II] The seed's settings could not be applied: "
+                          + ex.Message + " - the run may ignore your YAML.");
+        }
     }
 
     // Stable, reproducible per-world seed for AP data-file randomization: derived
@@ -2345,6 +2465,23 @@ public class D2Plugin : IGamePlugin
     public Task<int> RepairMissingCriticalFilesAsync(
             IProgress<(int Pct, string Msg)> progress)
         => RepairMissingFilesAsync(progress);
+
+    ///
+    /// Build the map tracker's pictures out of this player's own archives.
+    ///
+    /// The published pack carries no Diablo II artwork — it carries a list
+    /// saying which sprite becomes which tile, and the pictures are made here.
+    /// Runs on a worker: 475 sprites out of two 250 MB archives is disk work,
+    /// not UI work.
+    ///
+    public Task<int> BuildTrackerArtworkAsync(string packDir,
+                                              CancellationToken ct = default)
+    {
+        if (string.IsNullOrEmpty(GameDirectory) || !Directory.Exists(GameDirectory))
+            return Task.FromResult(0);
+        return Task.Run(() => D2TrackerPack.BuildArtwork(
+            GameDirectory, packDir, m => LogLine?.Invoke(m)), ct);
+    }
 
     // --- IGamePlugin: DeathLink, receive side ---
     public Task OnDeathLinkReceivedAsync(string source, string cause)
@@ -3444,6 +3581,18 @@ public class D2Plugin : IGamePlugin
     // part people get wrong: any other version fails to install.
     public string[] GameBadges =>
         IsOriginalD2Configured ? Array.Empty<string>() : new[] { "Requires D2: LoD 1.10f" };
+
+    ///
+    /// The excel tables the randomiser rewrites for each seed.
+    ///
+    /// Verify files compares every file against what was installed. Its own
+    /// rule for "the game changed this on purpose" is extension-based, which
+    /// covers .ini and .cfg and knows nothing about data tables — so a patched
+    /// Levels.txt was reported as "the wrong size", and the repair offered to
+    /// fetch the pristine copy over the table the player's seed is running on.
+    /// Naming them here is how that stops.
+    ///
+    public IReadOnlyList<string> VolatileDataFiles => D2DataFiles.ManagedNames;
 
     public async Task<NewsItem[]> GetNewsAsync(CancellationToken ct = default)
     {

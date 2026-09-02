@@ -31,6 +31,11 @@ public static class D2DataFiles
           "MagicPrefix.txt", "MagicSuffix.txt", "SetItems.txt", "UniqueItems.txt",
           "UniqueItems2.txt" };
 
+    /// The tables, for anything that needs to know which files this mod
+    /// rewrites — Verify files asks, so a patched table is not called damage
+    /// and the repair does not offer to overwrite the player's seed.
+    public static IReadOnlyList<string> ManagedNames => Managed;
+
     // True when the file name is one of the randomizer-managed excel tables
     // (the ones the pristine-backup/restore cycle owns).
     // flow to decide whether a repair actually touched managed data.
@@ -217,6 +222,12 @@ public static class D2DataFiles
     {
         try
         {
+            // The vanilla tables (weapons.txt, armor.txt, Levels.txt, the
+            // affix and set tables) are not shipped — they are Blizzard's.
+            // Pull any missing one out of the player's own archives FIRST,
+            // or everything below silently skips them and "item requirements
+            // off" / gear shop shuffle / force-full-generation do nothing.
+            D2MpqTables.ExtractMissingTables(gameDir);
             EnsureBackup(gameDir);                       // capture pristine before anything patches
             // Start from nothing: the map is static, so a seed generated earlier in
             // this launcher session would otherwise be published for one that has
