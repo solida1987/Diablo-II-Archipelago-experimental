@@ -1,34 +1,7 @@
 
-static void LoadSkillTreeAssets(void) {
-    char dc6Path[MAX_PATH];
-
-    if (g_sklTreeLoaded) return;
-    g_sklTreeLoaded = TRUE;
-
-    /* Load skill tree background DC6 from disk using D2CMP_CelFileNormalize.
-     * This is the same path D2Win's ARCHIVE_LoadCellFileWithFileSize uses:
-     *   1. Read raw DC6 file into memory
-     *   2. Call D2CMP ordinal 10024 (CelFileNormalize) to resolve pointers
-     *   3. Use the resulting D2CellFileStrc with D2Gfx ordinal 10072 (CelDraw)
-     *
-     * Place DC6 files in: <Game.exe dir>\data\global\ui\SPELLS\
-     */
-
-    if (BuildDC6Path(dc6Path, MAX_PATH, "skltree_a_back.DC6")) {
-        g_sklTreeBg = LoadDC6FromDisk(dc6Path);
-        Log("SkillTree: bg=%p from disk\n", g_sklTreeBg);
-    }
-
-    if (BuildDC6Path(dc6Path, MAX_PATH, "Skillicon.DC6")) {
-        g_sklIconFile = LoadDC6FromDisk(dc6Path);
-        Log("SkillTree: icons=%p from disk\n", g_sklIconFile);
-    }
-
-    if (!g_sklTreeBg) {
-        Log("SkillTree: WARNING - background DC6 not loaded, will use fallback rectangles\n");
-    }
-}
-
+/* (LoadSkillTreeAssets was deleted 2026-09-03: it had ZERO call sites, so its two
+ * disk DC6s were never drawn — and as load-once globals they would have drawn
+ * garbage after a save&quit anyway. See Tools/lint_disk_dc6_reload_per_session.py.) */
 /* Draw a loaded cel file using D2Gfx Ordinal 10072 (CelDraw). */
 static void DrawCel(void* pCelFile, int frame, int x, int y) {
     DWORD gfx[0x12];
@@ -105,6 +78,27 @@ static void LoadIconChain(IconChain* c, const char* baseName) {
         Log("Icons: %s sheet %d holds %d frames\n", baseName, sh, c->counts[sh]);
     }
     Log("Icons: %s chain holds %d frames total\n", baseName, c->total);
+}
+
+/* Release every sheet in a chain with the allocator that loaded it (Fog), and
+ * forget the frames. Never D2Win's free: these are our own disk DC6s. */
+static void FreeIconChain(IconChain* c) {
+    for (int sh = 0; sh < ARCH_ICON_SHEETS; sh++) DiskCelFree(&c->sheets[sh]);
+    memset(c, 0, sizeof(*c));
+}
+
+/* Have a chain loaded for THIS session. MEASURED 2026-09-03 (CELCHK): a disk
+ * DC6 kept across save&quit is still a valid DC6 at the same address - and
+ * still draws garbage, because D2Gfx (10072) caches decoded frames per cel
+ * POINTER and the game rebuilds that cache's memory on exit. A fresh
+ * pointer is a fresh cache entry, so every disk DC6 reloads per session.
+ * Cheap when current: two compares. Shared chains (35) go through here from
+ * every site, so the generation lives in the chain, not at the call site. */
+static void EnsureIconChain(IconChain* c, const char* baseName) {
+    if (c->total > 0 && c->gen == g_celSessionGen) return;
+    FreeIconChain(c);
+    LoadIconChain(c, baseName);
+    c->gen = g_celSessionGen;
 }
 
 /* Map a chain-global frame index onto (sheet, local frame). */
@@ -837,8 +831,11 @@ static void DrawAll(void) {
 
         if (panelOpen) {
             /* Load our custom panel DC6 from disk */
-            if (!s_loadAttempted) {
+            static int s_panelGen = -1;
+            if (s_panelGen != g_celSessionGen) {   /* reload per session */
+                s_panelGen = g_celSessionGen;
                 s_loadAttempted = TRUE;
+                DiskCelFree(&s_panelCel);
                 char dc6Path[MAX_PATH];
                 if (BuildDC6Path(dc6Path, MAX_PATH, "skltree_custom.DC6")) {
                     s_panelCel = LoadDC6FromDisk(dc6Path);
@@ -891,10 +888,10 @@ static void DrawAll(void) {
             }
 
             /* Load icon DC6 + map (once, shared by all 30 buttons). */
-            if (!g_archIconsLoaded) {
-                g_archIconsLoaded = TRUE;
+            {
+                g_archIconsLoaded = TRUE;   /* EnsureIconChain reloads per session */
                 /* Wave 2: loads ArchIcons40.DC6 plus any _2/_3/_4 continuation sheets, so the tree is no longer capped at one file. */
-                LoadIconChain(&g_iconChain40, "ArchIcons40");
+                EnsureIconChain(&g_iconChain40, "ArchIcons40");
             }
             if (!g_icoMapLoaded || g_skillPanelReset) {
                 g_icoMapLoaded = TRUE;
@@ -1053,11 +1050,10 @@ static void DrawAll(void) {
                         s_stRed41    = fnCelLoad("data\\global\\ui\\SPELLS\\red_square", 0);
                     }
                 }
-                if (!s_stIconsLoaded) {
-                    s_stIconsLoaded = TRUE;
+                {
+                    s_stIconsLoaded = TRUE;   /* EnsureIconChain reloads per session */
                     /* Shares the editor's chain - this used to load the same ArchIcons35.DC6 into a second Fog buffer. */
-                    if (g_iconChain35.total == 0)
-                        LoadIconChain(&g_iconChain35, "ArchIcons35");
+                    EnsureIconChain(&g_iconChain35, "ArchIcons35");
                 }
 
                 if (g_skillPanelReset) {

@@ -43,12 +43,15 @@ typedef struct {
     void* sheets[ARCH_ICON_SHEETS];
     int   counts[ARCH_ICON_SHEETS];
     int   total;                 /* frames across the whole chain; 0 = no icons */
+    int   gen;                   /* g_celSessionGen the sheets were loaded in (EnsureIconChain) */
 } IconChain;
 
 /* The mod ships the same icons at seven sizes; each size is its own chain. */
 static IconChain g_iconChain40;   /* skill tree */
 static IconChain g_iconChain35;   /* stash panel + editor reward-list grid */
 static IconChain g_iconChain24;   /* editor right-side slots + drag cursor */
+/* Defined in d2arch_drawall.c (later in the unity build); editor.c calls it first. */
+static void EnsureIconChain(IconChain* c, const char* baseName);
 static BOOL  g_archIconsLoaded = FALSE;
 #define g_archIconTotal (g_iconChain40.total)
 

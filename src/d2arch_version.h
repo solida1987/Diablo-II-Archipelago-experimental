@@ -1,12 +1,12 @@
 #ifndef D2ARCH_VERSION_H
 #define D2ARCH_VERSION_H
 
-/* Single source of truth for the Diablo II Archipelago mod version — EXPERIMENTAL line. */
+/* Single source of truth for the Diablo II Archipelago mod version ??? EXPERIMENTAL line. */
 
 #define D2ARCH_VERSION_MAJOR    1
 #define D2ARCH_VERSION_MINOR    2
-#define D2ARCH_VERSION_PATCH    3
-#define D2ARCH_VERSION_CHANNEL  "EX"            /* release channel — Experimental */
+#define D2ARCH_VERSION_PATCH    4
+#define D2ARCH_VERSION_CHANNEL  "EX"            /* release channel ??? Experimental */
 #define D2ARCH_VERSION_STRING   "EX_1_1_13"     /* token id (keep underscores, upper) */
 
 /* The user-visible version strings are DERIVED from MAJOR/MINOR/PATCH so they can never drift out of sync again. */

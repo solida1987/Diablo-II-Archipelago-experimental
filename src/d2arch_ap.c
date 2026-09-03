@@ -2617,9 +2617,7 @@ static void __declspec(naked) EndSceneHook(void) {
 /* ARCHIPELAGO SKILL TREE PANEL — 30 skills, single page, no tabs Replaces the vanilla 3-tab skill tree entirely. */
 
 /* Skill tree panel DC6 resources */
-static void* g_sklTreeBg = NULL;      /* Background cell file */
-static void* g_sklIconFile = NULL;    /* Skill icon cell file */
-static BOOL  g_sklTreeLoaded = FALSE;
+/* (g_sklTreeBg/g_sklIconFile/g_sklTreeLoaded deleted 2026-09-03 with LoadSkillTreeAssets.) */
 
 /* D2CMP ordinal 10024: CelFileNormalize Converts raw DC6 file data (read from disk) into a D2CellFileStrc with resolved pointers. */
 typedef void (__stdcall *CelFileNormalize_t)(void* pRawFile, void** ppOutFile,
@@ -2721,6 +2719,19 @@ static void* LoadDC6FromDisk(const char* szPath) {
     }
 
     return pCellFile;
+}
+
+/* Free a DC6 we loaded from disk, with the allocator that gave it to us.
+ * ⚠ Not EdCelFree/fnCelFree (D2Win 10041): that is the free for ARCHIVE
+ * cels. This block came from Fog 10042 (or HeapAlloc when Fog was absent),
+ * so it goes back the same way. NULLs the slot. */
+static void DiskCelFree(void** pSlot) {
+    if (!pSlot || !*pSlot) return;
+    __try {
+        if (g_fnFogFree) g_fnFogFree(*pSlot, "d2arch.c", __LINE__, 0);
+        else HeapFree(GetProcessHeap(), 0, *pSlot);
+    } __except(EXCEPTION_EXECUTE_HANDLER) {}
+    *pSlot = NULL;
 }
 
 /* Build the full path to a DC6 file in the runtime data directory. */

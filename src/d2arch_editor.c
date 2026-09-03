@@ -1057,9 +1057,9 @@ static void RenderEditor(void) {
     /* === BOOK PANELS (always visible on all pages) === */
 
     /* Load 24x24 icons for right-side slots (once) */
-    if (!g_icons28Loaded) {
-        g_icons28Loaded = TRUE;
-        LoadIconChain(&g_iconChain24, "ArchIcons24");
+    {
+        g_icons28Loaded = TRUE;   /* EnsureIconChain reloads per session */
+        EnsureIconChain(&g_iconChain24, "ArchIcons24");
     }
 
     /* === NEW SKILL EDITOR: two-page panel (left + right, like an open book) === */
@@ -1093,8 +1093,23 @@ static void RenderEditor(void) {
          * Measured 2026-09-03: six relogs, six generation bumps, six wrong
          * frees, corrupt icons every time — with the pointer-OR-name detection
          * firing correctly on all six. */
-        if (!s_edTopCel && s_edLoaded < 0) {
-            s_edLoaded = 0;
+        /* RELOAD on every session change. MEASURED 2026-09-03 (CELCHK): the
+         * Fog blocks stay perfectly valid across save&quit — magic 6 at the
+         * same address — and yet a load-once frame draws garbage after a
+         * relog while a reloaded one draws fine. D2Gfx (10072) caches the
+         * decoded frames per cel POINTER, and the game rebuilds that cache's
+         * memory on exit; the stale key then blits recycled sprite memory.
+         * A fresh pointer is a fresh cache entry. Free the old block with
+         * Fog's free (DiskCelFree), never D2Win's. */
+        if (s_edLoaded != g_celSessionGen) {
+            s_edLoaded = g_celSessionGen;
+            if (s_edLeftTopCel  == s_edTopCel) s_edLeftTopCel  = NULL;
+            if (s_edLeftBotCel  == s_edBotCel) s_edLeftBotCel  = NULL;
+            if (s_edRightTopCel == s_edTopCel) s_edRightTopCel = NULL;
+            if (s_edRightBotCel == s_edBotCel) s_edRightBotCel = NULL;
+            DiskCelFree(&s_edLeftTopCel);  DiskCelFree(&s_edLeftBotCel);
+            DiskCelFree(&s_edRightTopCel); DiskCelFree(&s_edRightBotCel);
+            DiskCelFree(&s_edTopCel);      DiskCelFree(&s_edBotCel);
             {
                 char dc6Path[MAX_PATH];
                 if (BuildDC6Path(dc6Path, MAX_PATH, "editor_top.DC6"))
@@ -1481,9 +1496,9 @@ static void RenderEditor(void) {
 
             /* ArchIcons35 chain (35x35, centered on 41x41 red = 3px border). */
             static BOOL s_icons35Loaded = FALSE;
-            if (!s_icons35Loaded) {
-                s_icons35Loaded = TRUE;
-                LoadIconChain(&g_iconChain35, "ArchIcons35");
+            {
+                s_icons35Loaded = TRUE;   /* EnsureIconChain reloads per session */
+                EnsureIconChain(&g_iconChain35, "ArchIcons35");
             }
 
             __try {
